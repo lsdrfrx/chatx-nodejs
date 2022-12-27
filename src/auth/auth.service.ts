@@ -16,10 +16,7 @@ export class AuthService {
   private readonly authWorker = new AuthWorker();
 
   async validateUser(data: UserDTO) {
-    const user = await this.userModel.findOne({ login: data.login }).exec();
-    if (!user) {
-      return {};
-    }
+    const user = await this.getUser(data.login);
 
     const passwordValid = await bcrypt.compare(data.password, user.password);
     if (user && passwordValid) {
@@ -30,6 +27,11 @@ export class AuthService {
   }
 
   async createUser(data: NewUserDTO) {
+    const userAlreadyExists = await this.getUser(data.login)
+    if (userAlreadyExists) {
+      return {}
+    }
+
     const user = await this.userModel.create({
       login: data.login,
       password: await bcrypt.hash(data.password, 7),
@@ -37,5 +39,13 @@ export class AuthService {
     });
 
     return this.authWorker.generateToken(user);
+  }
+
+  private async getUser(login: string) {
+    const user = await this.userModel.findOne({ login: login }).exec();
+    if (!user) {
+      return null;
+    }
+    return user;
   }
 }
